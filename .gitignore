@@ -31,4 +31,5 @@ config.yaml
 test_output/
 *.md
 !README.md
+!ALTERNATIVES.md
 !*.example
