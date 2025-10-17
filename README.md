@@ -161,7 +161,7 @@ tail -50 ~/Library/Logs/pdf-to-md.log
 ```
 pdf-to-md/
 ├── README.md                           # This file
-├── SETUP.md                            # Detailed setup guide
+├── SETUP.md                            # Detailed MacOS Automator setup guide
 ├── requirements.txt                    # Python dependencies
 ├── config.yaml.example                 # Example configuration
 ├── config.yaml                         # Your configuration
