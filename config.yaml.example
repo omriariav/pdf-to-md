@@ -2,7 +2,9 @@
 
 # Directory to monitor for new PDF files
 # Use ~ for home directory
-watch_directory: ~/Downloads
+# NOTE: ~/Downloads requires Full Disk Access due to macOS security
+# Consider using ~/Desktop or ~/Documents/PDFs instead
+watch_directory: ~/Desktop
 
 # Directory where converted markdown files will be saved
 # This directory will be created if it doesn't exist
