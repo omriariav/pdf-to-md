@@ -13,7 +13,26 @@ Automatically convert PDF files to Markdown format when they appear in your Down
 
 ## Quick Start
 
-### Installation
+**Choose your approach:**
+
+### Option A: Folder Action (Recommended - Easier Permissions)
+
+Uses macOS native Folder Actions - better for avoiding permission issues!
+
+```bash
+cd /Users/omri.a/Code/pdf-to-md
+./setup_folder_action.sh
+```
+
+Then follow the GUI instructions in **[FOLDER_ACTION_SETUP.md](FOLDER_ACTION_SETUP.md)** to set up via Automator.
+
+**Advantages**: Native macOS, easier permissions, visual notifications, GUI setup.
+
+### Option B: Background Daemon (Advanced)
+
+Traditional launchd daemon that runs continuously in the background.
+
+#### Installation
 
 1. Clone this repository:
    ```bash
@@ -165,15 +184,23 @@ rm -rf /Users/omri.a/Code/pdf-to-md
 ```
 pdf-to-md/
 ├── README.md                      # This file
+├── ALTERNATIVES.md                # Alternative approaches to avoid permissions issues
+├── FOLDER_ACTION_SETUP.md        # Guide for Folder Action setup (recommended)
 ├── requirements.txt               # Python dependencies
 ├── config.yaml.example            # Example configuration
-├── config.yaml                    # Your configuration (created by setup.sh)
-├── pdf_to_md_daemon.py           # Main daemon script
+├── config.yaml                    # Your configuration (created by setup scripts)
 ├── converters.py                  # PDF conversion logic
 ├── config.py                      # Configuration management
-├── setup.sh                       # Installation script
-├── com.user.pdf-to-md.plist      # launchd service template
-└── venv/                          # Python virtual environment (created by setup.sh)
+├── test_conversion.py             # Manual test utility
+├── Daemon Approach:
+│   ├── pdf_to_md_daemon.py       # Main daemon script
+│   ├── setup.sh                   # Daemon installation script
+│   └── com.user.pdf-to-md.plist  # launchd service template
+├── Folder Action Approach:
+│   ├── setup_folder_action.sh    # Folder Action setup script
+│   ├── convert_pdf_folder_action.sh    # Wrapper (generated)
+│   └── convert_single_pdf.py     # Single file converter (generated)
+└── venv/                          # Python virtual environment
 ```
 
 ## Troubleshooting

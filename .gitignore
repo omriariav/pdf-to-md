@@ -32,4 +32,5 @@ test_output/
 *.md
 !README.md
 !ALTERNATIVES.md
+!FOLDER_ACTION_SETUP.md
 !*.example
