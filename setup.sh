@@ -56,9 +56,53 @@ else
     echo "✓ config.yaml already exists"
 fi
 
-# Step 4: Setup launchd service
+# Step 4: Test file access permissions
 echo ""
-echo "Step 4: Setting up launchd service..."
+echo "Step 4: Testing file access permissions..."
+echo ""
+echo "macOS requires explicit permission to access the Downloads folder."
+echo "We'll now test if the daemon can access your configured watch directory."
+echo ""
+
+# Read watch directory from config
+WATCH_DIR=$(grep "^watch_directory:" config.yaml | cut -d: -f2 | xargs)
+WATCH_DIR_EXPANDED=$(eval echo "$WATCH_DIR")
+
+# Create a test PDF if none exists
+TEST_PDF="$WATCH_DIR_EXPANDED/.pdf_daemon_test.pdf"
+echo "Creating test file: $TEST_PDF"
+echo "%PDF-1.4 test" > "$TEST_PDF" 2>/dev/null || true
+
+echo ""
+echo "Running daemon for 10 seconds to trigger permission prompts..."
+echo "If macOS shows a permission dialog, please click 'Allow' or 'OK'."
+echo ""
+sleep 2
+
+# Run daemon briefly to trigger permissions (with timeout using background process)
+venv/bin/python3 pdf_to_md_daemon.py 2>&1 &
+DAEMON_PID=$!
+sleep 8
+kill $DAEMON_PID 2>/dev/null || true
+wait $DAEMON_PID 2>/dev/null || true
+
+# Clean up test file
+rm -f "$TEST_PDF" 2>/dev/null || true
+
+echo ""
+echo "✓ Permission test complete"
+echo ""
+echo "If you saw a permission error above, please:"
+echo "  1. Open System Settings → Privacy & Security → Files and Folders"
+echo "  2. Find 'Python' or 'Terminal' in the list"
+echo "  3. Enable access to Downloads folder"
+echo "  4. Then rerun this setup script"
+echo ""
+read -p "Press Enter to continue with launchd setup..."
+
+# Step 5: Setup launchd service
+echo ""
+echo "Step 5: Setting up launchd service..."
 
 # Get paths
 PYTHON_PATH="$SCRIPT_DIR/venv/bin/python3"

@@ -31,11 +31,17 @@ Automatically convert PDF files to Markdown format when they appear in your Down
    - Create a Python virtual environment
    - Install dependencies
    - Create a configuration file (`config.yaml`)
+   - **Test file access permissions** (may require granting access)
    - Set up the daemon to start automatically
 
-4. Review and customize `config.yaml` if needed (see Configuration section)
+4. **IMPORTANT**: During setup, if you see a permission error or macOS asks for permission:
+   - Go to **System Settings → Privacy & Security → Files and Folders**
+   - Find **Python** or **Terminal** in the list
+   - Enable access to **Downloads** folder (or your configured watch directory)
 
-5. Done! The daemon is now running and will start automatically at login.
+5. Review and customize `config.yaml` if needed (see Configuration section)
+
+6. Done! The daemon is now running and will start automatically at login.
 
 ### Test It
 
@@ -171,6 +177,28 @@ pdf-to-md/
 ```
 
 ## Troubleshooting
+
+### Permission Denied Errors (Most Common Issue)
+
+If you see `PermissionError: [Errno 1] Operation not permitted` in the logs, this is a macOS security restriction.
+
+**Fix:**
+1. Open **System Settings** (or System Preferences on older macOS)
+2. Go to **Privacy & Security**
+3. Click **Files and Folders** (or try **Full Disk Access** if Files and Folders doesn't work)
+4. Look for **Python** or **Terminal** in the list
+5. Enable access to **Downloads** folder
+6. Restart the daemon:
+   ```bash
+   launchctl unload ~/Library/LaunchAgents/com.user.pdf-to-md.plist
+   launchctl load ~/Library/LaunchAgents/com.user.pdf-to-md.plist
+   ```
+
+**Alternative**: Change the watch directory to a less restricted folder:
+```yaml
+# In config.yaml
+watch_directory: ~/Desktop  # or ~/Documents/PDFs
+```
 
 ### Daemon not starting
 
