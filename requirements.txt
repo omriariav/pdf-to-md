@@ -1,0 +1,11 @@
+# Core dependencies
+watchdog==4.0.0
+pdfplumber==0.11.0
+PyYAML==6.0.1
+
+# Optional: For marker-pdf converter (high-quality OCR/layout)
+# Uncomment these lines if you want to use marker-pdf:
+# marker-pdf==0.2.15
+# torch>=2.0.0
+# transformers>=4.30.0
+

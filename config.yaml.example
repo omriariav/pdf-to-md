@@ -1,0 +1,26 @@
+# PDF to Markdown Daemon Configuration
+
+# Directory to monitor for new PDF files
+# Use ~ for home directory
+watch_directory: ~/Downloads
+
+# Directory where converted markdown files will be saved
+# This directory will be created if it doesn't exist
+output_directory: ~/AI_Context/pdfs
+
+# PDF conversion method to use
+# Options:
+#   - pdfplumber: Fast, text-based extraction (default)
+#   - marker-pdf: High-quality OCR and layout preservation (requires additional dependencies)
+conversion_method: pdfplumber
+
+# Path to log file
+log_file: ~/Library/Logs/pdf-to-md.log
+
+# Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+log_level: INFO
+
+# Seconds to wait after file creation before processing (debouncing)
+# Helps ensure the file is fully downloaded before attempting conversion
+debounce_seconds: 2
+
