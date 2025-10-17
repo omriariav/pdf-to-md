@@ -1,156 +1,168 @@
 #!/bin/bash
 #
-# Setup script for PDF to Markdown Daemon
+# Setup macOS Folder Action for PDF to Markdown conversion
 #
-# This script:
-# 1. Creates a Python virtual environment
-# 2. Installs dependencies
-# 3. Creates config.yaml if it doesn't exist
-# 4. Sets up launchd service for auto-start
+# This creates an Automator workflow that triggers when PDFs are added to a folder.
+# Folder Actions avoid many permission issues because they run with user context.
 #
 
-set -e  # Exit on error
+set -e
 
 echo "===================================="
-echo "PDF to Markdown Daemon Setup"
+echo "PDF to Markdown Setup"
 echo "===================================="
 echo ""
 
-# Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Step 1: Create virtual environment
-echo "Step 1: Creating Python virtual environment..."
+# Ensure venv exists
 if [ ! -d "venv" ]; then
+    echo "Creating virtual environment..."
     python3 -m venv venv
+    source venv/bin/activate
+    pip install --upgrade pip > /dev/null
+    pip install -r requirements.txt
     echo "✓ Virtual environment created"
 else
-    echo "✓ Virtual environment already exists"
+    echo "✓ Virtual environment exists"
 fi
+
+# Create the wrapper script that Automator will call
+cat > "$SCRIPT_DIR/convert_pdf_folder_action.sh" << 'WRAPPER_EOF'
+#!/bin/bash
+# Wrapper script called by Folder Action
+# Receives file paths as arguments
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
 # Activate virtual environment
-source venv/bin/activate
+source "$SCRIPT_DIR/venv/bin/activate"
 
-# Step 2: Install dependencies
-echo ""
-echo "Step 2: Installing dependencies..."
-pip install --upgrade pip > /dev/null
-pip install -r requirements.txt
-echo "✓ Dependencies installed"
+# Log file
+LOG_FILE="$HOME/Library/Logs/pdf-to-md.log"
+mkdir -p "$(dirname "$LOG_FILE")"
 
-# Step 3: Create config.yaml
-echo ""
-echo "Step 3: Creating configuration file..."
+# Process each file passed by Folder Action
+for file in "$@"; do
+    # Only process PDF files
+    if [[ "$file" == *.pdf ]] || [[ "$file" == *.PDF ]]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Processing: $file" >> "$LOG_FILE"
+        
+        # Run the conversion using our existing converter
+        python3 "$SCRIPT_DIR/convert_single_pdf.py" "$file" >> "$LOG_FILE" 2>&1
+        
+        if [ $? -eq 0 ]; then
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✓ Successfully converted: $file" >> "$LOG_FILE"
+        else
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✗ Failed to convert: $file" >> "$LOG_FILE"
+        fi
+    fi
+done
+WRAPPER_EOF
+
+chmod +x "$SCRIPT_DIR/convert_pdf_folder_action.sh"
+echo "✓ Created wrapper script: convert_pdf_folder_action.sh"
+
+# Create the single file converter script
+cat > "$SCRIPT_DIR/convert_single_pdf.py" << 'PYTHON_EOF'
+#!/usr/bin/env python3
+"""
+Single PDF converter for Folder Actions.
+Called by convert_pdf_folder_action.sh when a PDF is added to watched folder.
+"""
+
+import sys
+from pathlib import Path
+from datetime import datetime
+
+from config import load_config
+from converters import get_converter
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: convert_single_pdf.py <path-to-pdf>")
+        sys.exit(1)
+
+    pdf_path = Path(sys.argv[1]).resolve()
+    
+    if not pdf_path.exists():
+        print(f"Error: File not found: {pdf_path}")
+        sys.exit(1)
+
+    if pdf_path.suffix.lower() != ".pdf":
+        print(f"Skipping non-PDF file: {pdf_path}")
+        sys.exit(0)
+
+    # Load config
+    config = load_config()
+    
+    # Get converter
+    converter = get_converter(config.conversion_method)
+    
+    # Convert
+    print(f"Converting {pdf_path.name} using {converter.name}...")
+    markdown = converter.convert(pdf_path)
+    
+    # Create output directory
+    config.output_directory.mkdir(parents=True, exist_ok=True)
+    
+    # Generate output filename
+    output_name = f"{pdf_path.stem}.md"
+    output_path = config.output_directory / output_name
+    
+    # If file exists, append timestamp
+    if output_path.exists():
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_name = f"{pdf_path.stem}_{timestamp}.md"
+        output_path = config.output_directory / output_name
+    
+    # Write markdown
+    output_path.write_text(markdown, encoding='utf-8')
+    
+    print(f"✓ Saved to: {output_path}")
+
+
+if __name__ == "__main__":
+    main()
+PYTHON_EOF
+
+chmod +x "$SCRIPT_DIR/convert_single_pdf.py"
+echo "✓ Created converter script: convert_single_pdf.py"
+
+# Create config if needed
 if [ ! -f "config.yaml" ]; then
     cp config.yaml.example config.yaml
-    echo "✓ Created config.yaml from example"
-    echo ""
-    echo "IMPORTANT: Please review and edit config.yaml to customize:"
-    echo "  - watch_directory (default: ~/Downloads)"
-    echo "  - output_directory (default: ~/AI_Context/pdfs)"
-    echo "  - conversion_method (default: pdfplumber)"
-    echo ""
-    read -p "Press Enter to continue after reviewing config.yaml..."
-else
-    echo "✓ config.yaml already exists"
+    echo "✓ Created config.yaml"
 fi
-
-# Step 4: Test file access permissions
-echo ""
-echo "Step 4: Testing file access permissions..."
-echo ""
-echo "macOS requires explicit permission to access the Downloads folder."
-echo "We'll now test if the daemon can access your configured watch directory."
-echo ""
-
-# Read watch directory from config
-WATCH_DIR=$(grep "^watch_directory:" config.yaml | cut -d: -f2 | xargs)
-WATCH_DIR_EXPANDED=$(eval echo "$WATCH_DIR")
-
-# Create a test PDF if none exists
-TEST_PDF="$WATCH_DIR_EXPANDED/.pdf_daemon_test.pdf"
-echo "Creating test file: $TEST_PDF"
-echo "%PDF-1.4 test" > "$TEST_PDF" 2>/dev/null || true
-
-echo ""
-echo "Running daemon for 10 seconds to trigger permission prompts..."
-echo "If macOS shows a permission dialog, please click 'Allow' or 'OK'."
-echo ""
-sleep 2
-
-# Run daemon briefly to trigger permissions (with timeout using background process)
-venv/bin/python3 pdf_to_md_daemon.py 2>&1 &
-DAEMON_PID=$!
-sleep 8
-kill $DAEMON_PID 2>/dev/null || true
-wait $DAEMON_PID 2>/dev/null || true
-
-# Clean up test file
-rm -f "$TEST_PDF" 2>/dev/null || true
-
-echo ""
-echo "✓ Permission test complete"
-echo ""
-echo "If you saw a permission error above, please:"
-echo "  1. Open System Settings → Privacy & Security → Files and Folders"
-echo "  2. Find 'Python' or 'Terminal' in the list"
-echo "  3. Enable access to Downloads folder"
-echo "  4. Then rerun this setup script"
-echo ""
-read -p "Press Enter to continue with launchd setup..."
-
-# Step 5: Setup launchd service
-echo ""
-echo "Step 5: Setting up launchd service..."
-
-# Get paths
-PYTHON_PATH="$SCRIPT_DIR/venv/bin/python3"
-SCRIPT_PATH="$SCRIPT_DIR/pdf_to_md_daemon.py"
-PLIST_SOURCE="$SCRIPT_DIR/com.user.pdf-to-md.plist"
-PLIST_DEST="$HOME/Library/LaunchAgents/com.user.pdf-to-md.plist"
-USERNAME=$(whoami)
-
-# Create LaunchAgents directory if it doesn't exist
-mkdir -p "$HOME/Library/LaunchAgents"
-
-# Replace placeholders in plist file
-sed -e "s|REPLACE_PYTHON_PATH|$PYTHON_PATH|g" \
-    -e "s|REPLACE_SCRIPT_PATH|$SCRIPT_PATH|g" \
-    -e "s|REPLACE_WORKING_DIR|$SCRIPT_DIR|g" \
-    -e "s|REPLACE_USERNAME|$USERNAME|g" \
-    "$PLIST_SOURCE" > "$PLIST_DEST"
-
-echo "✓ Created launchd plist: $PLIST_DEST"
-
-# Unload existing service if it's running
-if launchctl list | grep -q "com.user.pdf-to-md"; then
-    echo "Stopping existing service..."
-    launchctl unload "$PLIST_DEST" 2>/dev/null || true
-fi
-
-# Load the service
-echo "Loading launchd service..."
-launchctl load "$PLIST_DEST"
-echo "✓ Service loaded and started"
 
 echo ""
 echo "===================================="
 echo "Setup Complete!"
 echo "===================================="
 echo ""
-echo "The PDF to Markdown daemon is now running and will:"
-echo "  - Monitor: $(grep watch_directory config.yaml | cut -d: -f2 | xargs)"
-echo "  - Output to: $(grep output_directory config.yaml | cut -d: -f2 | xargs)"
-echo "  - Start automatically at login"
+echo "Now set up the Folder Action in Automator:"
 echo ""
-echo "Useful commands:"
-echo "  - Stop daemon:    launchctl unload ~/Library/LaunchAgents/com.user.pdf-to-md.plist"
-echo "  - Start daemon:   launchctl load ~/Library/LaunchAgents/com.user.pdf-to-md.plist"
-echo "  - Check status:   launchctl list | grep pdf-to-md"
-echo "  - View logs:      tail -f ~/Library/Logs/pdf-to-md.log"
-echo "  - Manual run:     ./venv/bin/python3 pdf_to_md_daemon.py"
+echo "1. Right-click on your Downloads folder (or any folder)"
+echo "2. Choose 'Quick Actions' or 'Services' → 'Folder Actions Setup'"
+echo "3. If that doesn't work, open 'Automator' app:"
+echo "   - Create new 'Folder Action'"
+echo "   - Choose folder: ~/Downloads (or your preferred folder)"
+echo "   - Add action: 'Run Shell Script'"
+echo "   - Set shell to: /bin/bash"
+echo "   - Set 'Pass input': as arguments"
+echo "   - Paste this script:"
 echo ""
-echo "Try it: Drop a PDF file into your Downloads folder!"
+echo "   $SCRIPT_DIR/convert_pdf_folder_action.sh \"\$@\""
+echo ""
+echo "4. Save the workflow"
+echo "5. Enable Folder Actions in System Settings → Extensions → Folder Actions"
+echo ""
+echo "OR use the quick command:"
+echo "  open -a 'Folder Actions Setup'"
+echo ""
+echo "Test by dropping a PDF into the watched folder!"
 echo ""
 

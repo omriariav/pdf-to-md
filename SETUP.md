@@ -1,11 +1,14 @@
-# Folder Action Setup (Alternative to Daemon)
+# PDF to Markdown - Complete Setup Guide
 
-Using macOS Folder Actions instead of a background daemon has several advantages:
-- ✅ **Better permissions**: Runs in user context, easier to grant access
-- ✅ **Native macOS integration**: Uses built-in Folder Actions
+This guide walks you through setting up automatic PDF-to-Markdown conversion using macOS Folder Actions.
+
+## Why Folder Actions?
+
+- ✅ **Better permissions**: Runs in your user context
+- ✅ **Native macOS integration**: Uses built-in Automator
 - ✅ **Visual feedback**: Can show notifications when conversions complete
-- ✅ **No daemon management**: No need for launchd
 - ✅ **Easy to enable/disable**: Toggle in System Settings
+- ✅ **No background daemon**: Lower resource usage
 
 ## Quick Setup
 
@@ -13,10 +16,10 @@ Using macOS Folder Actions instead of a background daemon has several advantages
 
 ```bash
 cd /Users/omri.a/Code/pdf-to-md
-./setup_folder_action.sh
+./setup.sh
 ```
 
-This creates the necessary wrapper scripts.
+This creates the necessary wrapper scripts and sets up the Python environment.
 
 ### Step 2: Create Folder Action via Automator
 
@@ -70,15 +73,13 @@ Check the log:
 tail -f ~/Library/Logs/pdf-to-md.log
 ```
 
-## Advantages Over Daemon Approach
+## Benefits of This Approach
 
-| Feature | Daemon (launchd) | Folder Action |
-|---------|------------------|---------------|
-| Permission Issues | ❌ Needs Full Disk Access | ✅ User context |
-| Setup Complexity | Medium | Easy (GUI) |
-| System Resources | Always running | Only when triggered |
-| Visual Feedback | Log files only | Can show notifications |
-| Enable/Disable | Terminal commands | System Settings toggle |
+✅ **No permission headaches**: Works with user-level permissions  
+✅ **Visual setup**: GUI-based configuration via Automator  
+✅ **Efficient**: Only runs when PDFs are added  
+✅ **Flexible**: Can show notifications, easy to modify  
+✅ **Native**: Uses macOS built-in automation tools
 
 ## Advanced: Add Notifications
 
@@ -123,33 +124,13 @@ ls ~/Library/Workflows/Applications/Folder\ Actions/
 open -a "Folder Actions Setup"
 ```
 
-## Switching from Daemon to Folder Action
+## Next Steps
 
-If you have the daemon running:
+After setup, try:
+- Drop a PDF in your watched folder to test
+- Check the log: `tail -f ~/Library/Logs/pdf-to-md.log`
+- View converted files: `open ~/AI_Context/pdfs/`
+- Add notifications to your workflow for visual feedback
 
-```bash
-# Stop and disable daemon
-launchctl unload ~/Library/LaunchAgents/com.user.pdf-to-md.plist
-
-# Optional: Remove daemon
-rm ~/Library/LaunchAgents/com.user.pdf-to-md.plist
-```
-
-Then follow the Folder Action setup above.
-
-## Which Approach Should You Use?
-
-**Use Folder Action if:**
-- You want easy GUI setup
-- You're okay with visual Automator configuration
-- You want notifications
-- You only need to watch 1-2 specific folders
-
-**Use Daemon (launchd) if:**
-- You need to watch multiple directories
-- You want pure command-line setup
-- You're okay granting Full Disk Access
-- You need more complex processing logic
-
-**For most users: Folder Action is simpler and more Mac-like! 🍎**
+Enjoy automatic PDF-to-Markdown conversion! 🎉
 

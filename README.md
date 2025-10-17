@@ -1,82 +1,70 @@
 # PDF to Markdown Auto-Converter
 
-Automatically convert PDF files to Markdown format when they appear in your Downloads folder. Perfect for feeding PDF content to AI agents and other tools that work better with text formats.
+Automatically convert PDF files to Markdown format using macOS Folder Actions. Drop a PDF in your watched folder, and it instantly converts to markdown - perfect for feeding PDF content to AI agents and other tools.
 
 ## Features
 
-- 🔍 **Real-time monitoring**: Watches your Downloads folder (or any configured directory) for new PDF files
-- ⚡ **Automatic conversion**: Converts PDFs to Markdown immediately after download
+- 🔍 **Automatic monitoring**: Uses macOS Folder Actions to watch for new PDFs
+- ⚡ **Instant conversion**: Converts PDFs to Markdown as soon as they appear
 - 🎛️ **Configurable converters**: Choose between fast text extraction or high-quality OCR
-- 🚀 **Runs in background**: Set-and-forget daemon that starts automatically at login
-- 📝 **Smart handling**: Debouncing, duplicate detection, comprehensive error handling
-- 🍎 **macOS native**: Uses launchd for proper system integration
+- 📝 **Smart handling**: Duplicate detection, comprehensive error handling
+- 🍎 **Native macOS**: Uses Automator Folder Actions - no daemon, no permission issues!
+- 🔔 **Optional notifications**: Get visual feedback when conversions complete
 
 ## Quick Start
 
-**Choose your approach:**
-
-### Option A: Folder Action (Recommended - Easier Permissions)
-
-Uses macOS native Folder Actions - better for avoiding permission issues!
+### 1. Run Setup Script
 
 ```bash
 cd /Users/omri.a/Code/pdf-to-md
-./setup_folder_action.sh
+./setup.sh
 ```
 
-Then follow the GUI instructions in **[FOLDER_ACTION_SETUP.md](FOLDER_ACTION_SETUP.md)** to set up via Automator.
+This will:
+- Create a Python virtual environment
+- Install dependencies
+- Create configuration files
+- Generate wrapper scripts for Automator
 
-**Advantages**: Native macOS, easier permissions, visual notifications, GUI setup.
+### 2. Set Up Folder Action in Automator
 
-### Option B: Background Daemon (Advanced)
+1. Open **Automator** app (in `/Applications`)
 
-Traditional launchd daemon that runs continuously in the background.
+2. Create **"New Document"** → **"Folder Action"**
 
-#### Installation
+3. Choose your folder (Downloads, Desktop, or any folder you want to monitor)
 
-1. Clone this repository:
+4. Search for **"Run Shell Script"** in the left sidebar and drag it to the workflow
+
+5. Configure:
+   - **Shell**: `/bin/bash`
+   - **Pass input**: `as arguments`
+   - **Script**: 
    ```bash
-   cd ~/Code
-   git clone <repository-url> pdf-to-md
-   cd pdf-to-md
+   /Users/omri.a/Code/pdf-to-md/convert_pdf_folder_action.sh "$@"
    ```
 
-2. Run the setup script:
-   ```bash
-   ./setup.sh
-   ```
+6. **Save** as "PDF to Markdown" 
+   - Location: `~/Library/Workflows/Applications/Folder Actions/`
 
-3. The script will:
-   - Create a Python virtual environment
-   - Install dependencies
-   - Create a configuration file (`config.yaml`)
-   - **Test file access permissions** (may require granting access)
-   - Set up the daemon to start automatically
+7. Enable in **System Settings** → **Extensions** → **Finder** → **Folder Actions**
 
-4. **IMPORTANT**: During setup, if you see a permission error or macOS asks for permission:
-   - Go to **System Settings → Privacy & Security → Files and Folders**
-   - Find **Python** or **Terminal** in the list
-   - Enable access to **Downloads** folder (or your configured watch directory)
+### 3. Test It!
 
-5. Review and customize `config.yaml` if needed (see Configuration section)
+Drop a PDF into your watched folder - it should automatically convert!
 
-6. Done! The daemon is now running and will start automatically at login.
+Check the output: `~/AI_Context/pdfs/`
 
-### Test It
-
-1. Download or copy a PDF file to your Downloads folder
-2. Wait 2-3 seconds
-3. Check the output directory (default: `~/AI_Context/pdfs/`)
-4. You should see a markdown file with the converted content!
+View the log:
+```bash
+tail -f ~/Library/Logs/pdf-to-md.log
+```
 
 ## Configuration
 
 Edit `config.yaml` to customize behavior:
 
 ```yaml
-# Directory to monitor for new PDF files
-watch_directory: ~/Downloads
-
 # Directory where converted markdown files will be saved
 output_directory: ~/AI_Context/pdfs
 
@@ -86,11 +74,8 @@ conversion_method: pdfplumber  # or marker-pdf
 # Path to log file
 log_file: ~/Library/Logs/pdf-to-md.log
 
-# Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+# Logging level
 log_level: INFO
-
-# Seconds to wait after file creation before processing
-debounce_seconds: 2
 ```
 
 ### Conversion Methods
@@ -104,7 +89,7 @@ debounce_seconds: 2
 
 **Installation**: Included by default
 
-#### marker-pdf
+#### marker-pdf (Optional)
 - ✅ High-quality OCR
 - ✅ Better layout preservation
 - ✅ Handles complex documents and images
@@ -124,192 +109,125 @@ conversion_method: marker-pdf
 
 ## Usage
 
-### Daemon Management
+### Managing Folder Actions
 
-The daemon runs automatically in the background. Use these commands to control it:
+#### Enable/Disable
+**System Settings** → **Extensions** → **Finder** → Toggle **Folder Actions**
 
+#### View Active Folder Actions
 ```bash
-# Stop the daemon
-launchctl unload ~/Library/LaunchAgents/com.user.pdf-to-md.plist
-
-# Start the daemon
-launchctl load ~/Library/LaunchAgents/com.user.pdf-to-md.plist
-
-# Check if daemon is running
-launchctl list | grep pdf-to-md
-
-# View live logs
-tail -f ~/Library/Logs/pdf-to-md.log
+open -a "Folder Actions Setup"
 ```
 
-### Manual Run (for testing)
+#### Add to More Folders
+- Right-click any folder
+- **Services** → **Folder Actions Setup**
+- Attach the "PDF to Markdown" workflow
 
-Run the daemon in your terminal to see live output:
+### Manual Conversion
+
+Test a single PDF without Folder Actions:
 
 ```bash
-cd /Users/omri.a/Code/pdf-to-md
 source venv/bin/activate
-python pdf_to_md_daemon.py
+./test_conversion.py ~/path/to/file.pdf
 ```
 
-Press `Ctrl+C` to stop.
-
-### Uninstallation
+### Logs
 
 ```bash
-# Stop and remove the daemon
-launchctl unload ~/Library/LaunchAgents/com.user.pdf-to-md.plist
-rm ~/Library/LaunchAgents/com.user.pdf-to-md.plist
+# View live log
+tail -f ~/Library/Logs/pdf-to-md.log
 
-# Remove the project directory
-cd ~
-rm -rf /Users/omri.a/Code/pdf-to-md
+# View recent entries
+tail -50 ~/Library/Logs/pdf-to-md.log
 ```
 
 ## How It Works
 
-1. **File System Monitoring**: Uses the `watchdog` library to monitor the configured directory for file creation events
-2. **Debouncing**: Waits 2 seconds (configurable) after a PDF appears to ensure the download is complete
-3. **Conversion**: Processes the PDF using your chosen converter
-4. **Markdown Generation**: Creates a well-formatted markdown file with:
+1. **Folder Action**: macOS watches your chosen folder for new files
+2. **Trigger**: When a PDF is added, Automator runs the wrapper script
+3. **Conversion**: Script uses pdfplumber (or marker-pdf) to extract content
+4. **Markdown Generation**: Creates formatted markdown with:
    - Original filename as title
    - Page-by-page content
    - Tables (when detected)
    - Metadata
-5. **Output**: Saves the markdown file to your configured directory
-6. **Duplicate Handling**: If a file with the same name exists, appends a timestamp
+5. **Output**: Saves to your configured directory
+6. **Duplicate Handling**: Appends timestamp if file already exists
 
 ## File Structure
 
 ```
 pdf-to-md/
-├── README.md                      # This file
-├── ALTERNATIVES.md                # Alternative approaches to avoid permissions issues
-├── FOLDER_ACTION_SETUP.md        # Guide for Folder Action setup (recommended)
-├── requirements.txt               # Python dependencies
-├── config.yaml.example            # Example configuration
-├── config.yaml                    # Your configuration (created by setup scripts)
-├── converters.py                  # PDF conversion logic
-├── config.py                      # Configuration management
-├── test_conversion.py             # Manual test utility
-├── Daemon Approach:
-│   ├── pdf_to_md_daemon.py       # Main daemon script
-│   ├── setup.sh                   # Daemon installation script
-│   └── com.user.pdf-to-md.plist  # launchd service template
-├── Folder Action Approach:
-│   ├── setup_folder_action.sh    # Folder Action setup script
-│   ├── convert_pdf_folder_action.sh    # Wrapper (generated)
-│   └── convert_single_pdf.py     # Single file converter (generated)
-└── venv/                          # Python virtual environment
+├── README.md                           # This file
+├── SETUP.md                            # Detailed setup guide
+├── requirements.txt                    # Python dependencies
+├── config.yaml.example                 # Example configuration
+├── config.yaml                         # Your configuration
+├── converters.py                       # PDF conversion logic
+├── config.py                           # Configuration management
+├── test_conversion.py                  # Manual test utility
+├── setup.sh                            # Installation script
+├── convert_pdf_folder_action.sh        # Wrapper for Automator (generated)
+├── convert_single_pdf.py               # Single file converter (generated)
+└── venv/                               # Python virtual environment
 ```
 
 ## Troubleshooting
 
-### Permission Denied Errors (Most Common Issue)
+### Folder Action not triggering
 
-If you see `PermissionError: [Errno 1] Operation not permitted` in the logs, this is a macOS security restriction.
+1. **Check if enabled**:
+   - **System Settings** → **Extensions** → **Finder** → **Folder Actions** ✓
 
-**Fix:**
-1. Open **System Settings** (or System Preferences on older macOS)
-2. Go to **Privacy & Security**
-3. Click **Files and Folders** (or try **Full Disk Access** if Files and Folders doesn't work)
-4. Look for **Python** or **Terminal** in the list
-5. Enable access to **Downloads** folder
-6. Restart the daemon:
-   ```bash
-   launchctl unload ~/Library/LaunchAgents/com.user.pdf-to-md.plist
-   launchctl load ~/Library/LaunchAgents/com.user.pdf-to-md.plist
-   ```
+2. **Verify workflow is attached**:
+   - Right-click your folder → **Services** → **Folder Action Setup**
+   - Your workflow should be listed
 
-**Alternative**: Change the watch directory to a less restricted folder:
-```yaml
-# In config.yaml
-watch_directory: ~/Desktop  # or ~/Documents/PDFs
-```
-
-### Daemon not starting
-
-Check the launchd logs:
-```bash
-cat /tmp/pdf-to-md.err.log
-cat /tmp/pdf-to-md.out.log
-```
-
-Check if it's loaded:
-```bash
-launchctl list | grep pdf-to-md
-```
-
-### PDFs not being converted
-
-1. Check the daemon is running:
-   ```bash
-   launchctl list | grep pdf-to-md
-   ```
-
-2. Check the logs:
-   ```bash
-   tail -f ~/Library/Logs/pdf-to-md.log
-   ```
-
-3. Verify your configuration:
-   ```bash
-   cat config.yaml
-   ```
-
-4. Test manually:
-   ```bash
-   cd /Users/omri.a/Code/pdf-to-md
-   source venv/bin/activate
-   python pdf_to_md_daemon.py
-   ```
-   Then drop a PDF in the watched folder and observe the output.
+3. **Check Automator permissions**:
+   - **System Settings** → **Privacy & Security** → **Automation**
+   - Ensure Automator can control Finder
 
 ### Conversion fails
 
-Some PDFs are encrypted, corrupted, or use formats that are difficult to parse. Check the log file for specific error messages:
-
+Check the log for specific errors:
 ```bash
 tail -50 ~/Library/Logs/pdf-to-md.log
 ```
 
-If using `pdfplumber` fails, try switching to `marker-pdf` for better OCR support.
+Some PDFs are encrypted, corrupted, or use difficult formats. Try:
+- Different PDF
+- Switch to `marker-pdf` in config.yaml for better OCR
 
 ### Permission errors
 
-Ensure the daemon has permission to:
-- Read from the watch directory
-- Write to the output directory
-- Write to the log file directory
+Folder Actions run in your user context, so they have the same permissions as you. If you can manually open the PDF, the script should be able to process it.
 
-Check directory permissions:
-```bash
-ls -la ~/Downloads
-ls -la ~/AI_Context
-```
+If issues persist:
+- Try watching a different folder (Desktop instead of Downloads)
+- Ensure Automator has necessary permissions in System Settings
 
 ## Advanced Usage
 
-### Multiple Watch Directories
+### Add Visual Notifications
 
-To monitor multiple directories, create separate configurations and launchd services:
+Edit your Automator workflow:
+1. Add **"Display Notification"** action after the shell script
+2. Message: "PDF converted successfully"
 
-1. Copy the project directory:
-   ```bash
-   cp -r pdf-to-md pdf-to-md-documents
-   ```
+Or modify the wrapper script to include:
+```bash
+osascript -e 'display notification "PDF converted to Markdown" with title "PDF Converter"'
+```
 
-2. Edit the new `config.yaml`:
-   ```yaml
-   watch_directory: ~/Documents
-   output_directory: ~/AI_Context/documents
-   ```
+### Watch Multiple Folders
 
-3. Run setup.sh in the new directory (edit the plist label to be unique)
+Create separate Folder Action workflows for each folder you want to monitor. They can all use the same conversion script.
 
 ### Custom Processing
 
-Extend the `PDFConverter` base class in `converters.py` to implement custom conversion logic:
+Extend the `PDFConverter` base class in `converters.py`:
 
 ```python
 class CustomConverter(PDFConverter):
@@ -322,17 +240,28 @@ class CustomConverter(PDFConverter):
         return markdown_content
 ```
 
-Then update the factory in `converters.py` and your config.yaml.
+Update the factory in `converters.py` and your `config.yaml`.
 
 ## Integration with AI Agents
 
-The markdown files are saved to a configured directory (default: `~/AI_Context/pdfs/`) where they can be easily accessed by:
+Converted markdown files are saved to `~/AI_Context/pdfs/` (configurable) where they can be easily accessed by:
 
-- Cursor AI (add the directory to your workspace)
-- Custom AI agents with file system access
-- RAG (Retrieval Augmented Generation) systems
-- Document processing pipelines
-- Search/indexing systems
+- **Cursor AI**: Add the directory to your workspace
+- **Custom AI agents**: With file system access
+- **RAG systems**: Retrieval Augmented Generation
+- **Document pipelines**: Search, indexing, processing
+- **Note-taking apps**: Obsidian, Notion, etc.
+
+## Why Folder Actions?
+
+Compared to background daemons, Folder Actions offer:
+
+✅ **Better permissions**: Runs in your user context  
+✅ **Native macOS**: Built-in Automator integration  
+✅ **Easy setup**: Visual GUI configuration  
+✅ **No daemon management**: No launchd complexity  
+✅ **Visual feedback**: Optional notifications  
+✅ **Lower resource usage**: Only runs when triggered  
 
 ## Requirements
 
@@ -343,27 +272,19 @@ The markdown files are saved to a configured directory (default: `~/AI_Context/p
 
 ## Dependencies
 
-- `watchdog`: File system monitoring
-- `pdfplumber`: Fast PDF text extraction
+- `watchdog`: File system events (used by converter)
+- `pdfplumber`: Fast PDF text extraction (default)
 - `PyYAML`: Configuration file parsing
 - `marker-pdf` (optional): High-quality PDF conversion with OCR
+
+## Support
+
+For the complete setup guide with screenshots and troubleshooting, see [SETUP.md](SETUP.md).
 
 ## License
 
 MIT License - feel free to use and modify as needed.
 
-## Contributing
-
-Contributions are welcome! Feel free to:
-- Report bugs
-- Suggest features
-- Submit pull requests
-- Improve documentation
-
-## Support
-
-For issues, questions, or feature requests, please open an issue on GitHub.
-
 ---
 
-**Note**: This daemon processes files locally on your machine. No data is sent to external services unless you explicitly use a converter that does so (not included in the default setup).
+**Note**: This tool processes files locally on your machine. No data is sent to external services.
